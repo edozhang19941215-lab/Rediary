@@ -82,7 +82,7 @@ export async function getMoodResponse({ pet, mood, moodLabel }) {
 请以你的角色，给出一句温暖的回应或追问（1-2句），引导用户说说今天发生了什么，让他们有想写日记的冲动。
 语气要符合你的性格，但核心是温暖、好奇、让用户感到被关注。`;
   try {
-    return await callAI(pet.systemPrompt, prompt, 300);
+    return await callAI(pet.systemPrompt, prompt, 200);
   } catch {
     return getFallbackMood(pet, mood);
   }
@@ -99,7 +99,7 @@ export async function getChatReply({ pet, userMessage, conversationHistory, diar
   const history = trimHistory(conversationHistory.slice(-8));
   history.push({ role: 'user', content: userMessage });
   try {
-    return await callAIWithHistory(system, history, 400);
+    return await callAIWithHistory(system, history, 200);
   } catch {
     return getFallbackResponse(pet, false);
   }
@@ -171,7 +171,7 @@ export async function getProactiveMessage({ pet, diaryText, conversationHistory 
   try {
     const history = trimHistory(conversationHistory.slice(-4));
     history.push({ role: 'user', content: prompt });
-    return await callAIWithHistory(pet.systemPrompt, history, 300);
+    return await callAIWithHistory(pet.systemPrompt, history, 200);
   } catch {
     return getFallbackProactive(pet);
   }
