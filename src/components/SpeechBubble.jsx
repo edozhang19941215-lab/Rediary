@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function SpeechBubble({ text, isLoading = false, petColor = '#E8808A', onDone }) {
   const [displayed, setDisplayed] = useState('');
