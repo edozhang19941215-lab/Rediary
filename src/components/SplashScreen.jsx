@@ -26,11 +26,10 @@ export default function SplashScreen({ onStart }) {
           animation: 'bounce-in 0.8s cubic-bezier(0.34,1.56,0.64,1) both',
         }}>
           <div style={{
-            fontSize: 64,
             marginBottom: 8,
             filter: 'drop-shadow(0 4px 12px rgba(232,128,138,0.3))',
           }}>
-            📔
+            <img src="/icon.png" alt="REDiary" style={{ width: 80, height: 80, borderRadius: 20 }} />
           </div>
           <h1 style={{
             fontFamily: 'var(--font-hand)',
@@ -40,7 +39,7 @@ export default function SplashScreen({ onStart }) {
             lineHeight: 1,
             marginBottom: 6,
           }}>
-            陪陪记
+            REDiary
           </h1>
           <p style={{
             fontFamily: 'var(--font-body)',

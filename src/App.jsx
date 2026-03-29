@@ -91,12 +91,12 @@ export default function App() {
         justifyContent: 'center', background: 'var(--cream)',
         flexDirection: 'column', gap: 16,
       }}>
-        <div style={{ fontSize: 52, animation: 'bounce-in 0.6s ease both' }}>📔</div>
+        <img src="/icon.png" alt="REDiary" style={{ width: 64, height: 64, borderRadius: 16, animation: 'bounce-in 0.6s ease both' }} />
         <div style={{
           fontFamily: 'var(--font-hand)', fontSize: 28,
           color: 'var(--ink)', letterSpacing: 4,
           animation: 'fade-in 0.6s ease 0.3s both',
-        }}>陪陪记</div>
+        }}>REDiary</div>
       </div>
     );
   }
