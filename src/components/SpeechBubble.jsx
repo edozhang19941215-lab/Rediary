@@ -33,8 +33,7 @@ export default function SpeechBubble({ text, isLoading = false, petColor = '#E88
       boxShadow: '0 3px 12px rgba(0,0,0,0.08)',
       border: `1.5px solid ${petColor}30`,
       animation: 'bubble-in 0.4s cubic-bezier(0.34,1.56,0.64,1) both',
-      minHeight: 40,
-      maxWidth: 260,
+      minHeight: 64,
     }}>
       {isLoading ? (
         <div style={{ display: 'flex', gap: 5, padding: '4px 2px', alignItems: 'center' }}>
@@ -50,7 +49,7 @@ export default function SpeechBubble({ text, isLoading = false, petColor = '#E88
       ) : (
         <p style={{
           fontFamily: 'var(--font-body)',
-          fontSize: 13.5,
+          fontSize: 14.5,
           lineHeight: 1.6,
           color: 'var(--ink)',
           margin: 0,

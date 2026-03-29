@@ -345,85 +345,71 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
         }}>保存</button>
       </div>
 
-      {/* 今日心情 — prominent mood card */}
-      <div style={{ padding: '0 16px 10px', flexShrink: 0 }}>
-        <div style={{
-          background: 'white', borderRadius: 16,
-          padding: '10px 14px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
-        }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
-          }}>
-            <span style={{ fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--ink-faint)', letterSpacing: 0.5 }}>今日心情</span>
-            {mood && (
-              <span style={{
-                fontSize: 11, fontFamily: 'var(--font-body)',
-                color: pet.color, fontWeight: 600,
-              }}>
-                {MOODS.find(m => m.emoji === mood)?.label}
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
-            {MOODS.map(m => (
-              <button key={m.emoji} onClick={() => handleMoodSelect(m.emoji)}
-                style={{
-                  flexShrink: 0,
-                  background: mood === m.emoji ? `${pet.color}18` : 'var(--surface)',
-                  border: `1.5px solid ${mood === m.emoji ? pet.color : 'transparent'}`,
-                  borderRadius: 22, padding: '5px 12px', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  transition: 'all 0.15s',
-                  transform: mood === m.emoji ? 'scale(1.08)' : 'scale(1)',
-                }}>
-                <span style={{ fontSize: 18 }}>{m.emoji}</span>
-                <span style={{ fontSize: 11, fontFamily: 'var(--font-body)', color: mood === m.emoji ? pet.color : 'var(--ink-light)', whiteSpace: 'nowrap' }}>
-                  {m.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Pet + speech bubble + chat input */}
+      {/* ── Pet chat card (prominent) ── */}
       <div style={{
-        display: 'flex', alignItems: 'flex-start',
-        gap: 10, padding: '0 16px 8px', flexShrink: 0,
+        margin: '0 16px 10px', flexShrink: 0,
+        background: 'white',
+        borderRadius: 24,
+        boxShadow: `0 4px 24px ${pet.color}22`,
+        border: `1.5px solid ${pet.accent}`,
+        padding: '14px 14px 12px',
       }}>
-        <div style={{ flexShrink: 0, paddingTop: 4 }}>
-          <PetAvatar petId={pet.id} state={petState} size={88} />
+        {/* Mood row — compact inside card */}
+        <div style={{ display: 'flex', gap: 5, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 12 }}>
+          {MOODS.map(m => (
+            <button key={m.emoji} onClick={() => handleMoodSelect(m.emoji)}
+              style={{
+                flexShrink: 0,
+                background: mood === m.emoji ? `${pet.color}18` : 'var(--surface)',
+                border: `1.5px solid ${mood === m.emoji ? pet.color : 'transparent'}`,
+                borderRadius: 20, padding: '3px 10px', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 3,
+                transition: 'all 0.15s',
+                transform: mood === m.emoji ? 'scale(1.08)' : 'scale(1)',
+              }}>
+              <span style={{ fontSize: 16 }}>{m.emoji}</span>
+              <span style={{ fontSize: 10.5, fontFamily: 'var(--font-body)', color: mood === m.emoji ? pet.color : 'var(--ink-light)', whiteSpace: 'nowrap' }}>
+                {m.label}
+              </span>
+            </button>
+          ))}
         </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
-          <SpeechBubble text={petMessage} isLoading={petLoading} petColor={pet.color} />
-          {/* Chat reply input */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <input
-              value={chatInput}
-              onChange={e => { setChatInput(e.target.value); chatInputRef.current = e.target.value; startProactiveTimer(); }}
-              onKeyDown={e => e.key === 'Enter' && handleChatSend()}
-              placeholder="试试和我聊天也可以写日记哟"
-              style={{
-                flex: 1, background: 'white', border: 'none', borderRadius: 20,
-                padding: '7px 13px', fontFamily: 'var(--font-body)', fontSize: 13,
-                color: 'var(--ink)', outline: 'none',
-                boxShadow: '0 1px 8px rgba(0,0,0,0.07)',
-              }}
-            />
-            <button
-              onClick={handleChatSend}
-              disabled={!chatInput.trim() || petLoading}
-              style={{
-                width: 32, height: 32, borderRadius: '50%', border: 'none',
-                background: chatInput.trim() && !petLoading ? pet.color : 'var(--surface-high)',
-                color: chatInput.trim() && !petLoading ? 'white' : 'var(--ink-faint)',
-                cursor: chatInput.trim() && !petLoading ? 'pointer' : 'default',
-                fontSize: 14, transition: 'all 0.15s', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >↑</button>
+
+        {/* Pet + bubble */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 12 }}>
+          <div style={{ flexShrink: 0 }}>
+            <PetAvatar petId={pet.id} state={petState} size={110} />
           </div>
+          <div style={{ flex: 1 }}>
+            <SpeechBubble text={petMessage} isLoading={petLoading} petColor={pet.color} />
+          </div>
+        </div>
+
+        {/* Chat input */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            value={chatInput}
+            onChange={e => { setChatInput(e.target.value); chatInputRef.current = e.target.value; startProactiveTimer(); }}
+            onKeyDown={e => e.key === 'Enter' && handleChatSend()}
+            placeholder="试试和我聊天也可以写日记哟"
+            style={{
+              flex: 1, background: 'var(--surface)', border: 'none', borderRadius: 22,
+              padding: '9px 16px', fontFamily: 'var(--font-body)', fontSize: 13.5,
+              color: 'var(--ink)', outline: 'none',
+            }}
+          />
+          <button
+            onClick={handleChatSend}
+            disabled={!chatInput.trim() || petLoading}
+            style={{
+              width: 36, height: 36, borderRadius: '50%', border: 'none',
+              background: chatInput.trim() && !petLoading ? pet.color : 'var(--surface-high)',
+              color: chatInput.trim() && !petLoading ? 'white' : 'var(--ink-faint)',
+              cursor: chatInput.trim() && !petLoading ? 'pointer' : 'default',
+              fontSize: 16, transition: 'all 0.15s', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >↑</button>
         </div>
       </div>
 
