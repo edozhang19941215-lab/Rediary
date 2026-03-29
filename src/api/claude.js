@@ -125,42 +125,33 @@ export async function updateDiaryFromChat({ conversationHistory, currentDiary })
     .map(m => `${m.role === 'user' ? '用户' : '小动物'}：${m.content}`)
     .join('\n');
 
-  const system = `你是一个日记记录助手，帮助把对话内容整合进日记里。
+  const system = `你是一个日记记录助手，把聊天对话中用户说的内容续写进日记。
 
 【核心原则】
-只记录【用户】自己说的关于自己生活的内容。
-绝对不能记录：宠物/小动物说的话、宠物分享的故事、宠物的经历感受。
-绝对不能推测或补充用户没有亲口提到的具体事件、地点、人物、感受。
+只提取【用户】说的内容，不记录宠物/小动物说的话。
+不推测、不补充用户没有提到的细节。
 
-【记录标准——满足任一条即记录】
-1. 用户提到了自己经历的具体的事、物、人、地点
-2. 用户表达了自己的情绪或感受
-3. 用户说了任何对自己今天有实质描述的话
+【默认记录】只要用户说了超过单字的内容（不是纯粹的"嗯""哦""好"），就应该记录。
+【唯一跳过情况】用户只说了"嗯""哦""好""嗯嗯"等纯粹的单字/叠字应答，且日记里已有类似内容。
 
-【不记录的情况】
-- 纯粹的单字应答（"嗯"、"哦"等）且没有新信息
-- 内容和现有日记完全重复
-- 这句话是宠物说的
-
-【续写要求——非常重要】
-- 认真阅读"现有日记"，理解已有的内容、时态和语气风格
-- 输出是日记的自然续写，用第一人称，像同一个人继续写
-- 不要重复现有日记已经描述过的事件或感受
-- 如果现有日记里已出现"今天"，不要以"今天"开头
-- 语言风格与现有日记保持一致，顺畅接续
-- 1-2句，简洁自然
-
-如果不值得记录，返回空字符串。
-只输出新增的日记语句本身或空字符串，不要任何解释。`;
+【续写格式】
+- 第一人称，像日记作者继续写
+- 不重复现有日记已有的内容
+- 1-2句，简洁自然，与现有日记语气一致
+- 只输出续写的日记句子，不加任何解释或前缀`;
 
   try {
     const result = await callAI(
       system,
       `现有日记：\n${currentDiary || '（空白）'}\n\n最新对话：\n${exchangeText}`,
       200,
-      0.3  // lower temperature reduces hallucination while keeping natural writing
+      0.5
     );
-    return result.trim();
+    const trimmed = result.trim();
+    if (trimmed.length < 4) return '';
+    const metaPhrases = ['不需要记录', '没有新内容', '无需添加', '空字符串'];
+    if (metaPhrases.some(p => trimmed.includes(p))) return '';
+    return trimmed;
   } catch {
     return '';
   }
@@ -213,12 +204,35 @@ export async function generateGoldenQuote({ diaryText, conversationHistory }) {
 }
 
 // Generate an AI illustration for the diary page via MiniMax image generation
-export async function generateDiaryIllustration(diaryText, pet) {
-  // Extract a short scene hint directly from diary text (no extra LLM call)
-  const excerpt = diaryText?.trim().slice(0, 80).replace(/\n/g, '，') || '';
-  const contextHint = excerpt ? `，画面灵感来自：${excerpt}` : '';
+export async function generateDiaryIllustration(diaryText, pet, conversationHistory = []) {
+  // Use LLM to extract the most visual scene from diary + conversation
+  let sceneHint = '';
+  try {
+    const chatLines = trimHistory(conversationHistory.slice(-8))
+      .map(m => `${m.role === 'user' ? '用户' : pet.name}：${m.content}`)
+      .join('\n');
+    const contextText = [
+      diaryText?.trim() ? `日记：${diaryText.trim().slice(0, 300)}` : '',
+      chatLines ? `对话：\n${chatLines}` : '',
+    ].filter(Boolean).join('\n\n');
 
-  const prompt = `治愈卡通风格插图，温馨可爱，日式治愈系，柔和暖色调，圆润线条，画面包含日常生活小物件（咖啡杯、书本、植物、小食物等），无人物面部，无文字${contextHint}`;
+    if (contextText) {
+      sceneHint = await callAI(
+        `你是插图场景提取助手。根据用户的日记和对话，找出最有画面感的一个具体场景或物件组合，用于生成治愈系插图。
+要求：
+- 只描述画面中的物件、环境、氛围，不涉及人物面部
+- 10-20个字，简洁具体
+- 聚焦日记或对话中真实提到的事物（如"一杯奶茶放在窗边""满天星插在玻璃瓶里""热腾腾的火锅"）
+- 只输出场景描述本身，不加任何解释`,
+        contextText,
+        60,
+        0.7
+      );
+    }
+  } catch { /* fall through to generic prompt */ }
+
+  const sceneContext = sceneHint?.trim() ? `，核心画面：${sceneHint.trim()}` : '';
+  const prompt = `治愈卡通风格插图，温馨可爱，日式治愈系，柔和暖色调，圆润线条，无人物面部，无文字${sceneContext}`;
 
   const imgHeaders = { 'Content-Type': 'application/json' };
   if (API_KEY) imgHeaders['Authorization'] = `Bearer ${API_KEY}`;
@@ -269,11 +283,11 @@ export async function generateDiarySummary(diaryText, petName) {
 
 // Generate a growth illustration based on summary data
 export async function generateGrowthIllustration(summaryData) {
-  const keywords = summaryData.keywords?.join('、') || '';
   const emotion = summaryData.emotion || '温暖';
-  const highlight = summaryData.highlight?.slice(0, 30) || '';
+  const visualScene = summaryData.visualScene?.trim();
+  const sceneContext = visualScene ? `，核心画面：${visualScene}` : '';
 
-  const prompt = `治愈卡通风格插图，温馨可爱，日式治愈系，柔和暖色调，圆润线条，画面主题来自："${highlight || emotion}"，具体意象包含：${keywords}，整体氛围${emotion}，无人物面部，无文字`;
+  const prompt = `治愈卡通风格插图，温馨可爱，日式治愈系，柔和暖色调，圆润线条，整体氛围${emotion}，无人物面部，无文字${sceneContext}`;
 
   const imgHeaders = { 'Content-Type': 'application/json' };
   if (API_KEY) imgHeaders['Authorization'] = `Bearer ${API_KEY}`;
@@ -301,11 +315,12 @@ export async function generateGrowthSummary(entries, period = 'week') {
   "keywords": ["关键词1", "关键词2", "关键词3", "关键词4", "关键词5"],
   "summary": "一段温暖的成长总结（60字以内）",
   "emotion": "整体情绪基调（如：温柔平静、充满活力等）",
-  "highlight": "这段时间最值得记住的一句话（诗意的）"
+  "highlight": "这段时间最值得记住的一句话（诗意的）",
+  "visualScene": "从日记里挑出最有画面感的具体物件或场景，用于生成插图（15字以内，只写物件和环境，如：满天星插在玻璃瓶里、山顶俯瞰城市的傍晚、热腾腾的红豆汤圆）"
 }`;
 
   try {
-    const text = await callAI(system, `${period === 'week' ? '本周' : '本月'}日记：\n${combinedText}`, 500);
+    const text = await callAI(system, `${period === 'week' ? '本周' : '本月'}日记：\n${combinedText}`, 600);
     const clean = text.replace(/```json|```/g, '').trim();
     return JSON.parse(clean);
   } catch {
@@ -313,7 +328,8 @@ export async function generateGrowthSummary(entries, period = 'week') {
       keywords: ['成长', '记录', '生活', '思考', '感恩'],
       summary: '每一天都是独特的故事，你在用文字温柔地见证自己。',
       emotion: '平静温暖',
-      highlight: '记录本身，就是一种爱。'
+      highlight: '记录本身，就是一种爱。',
+      visualScene: '',
     };
   }
 }

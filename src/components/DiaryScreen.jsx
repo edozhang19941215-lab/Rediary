@@ -51,8 +51,10 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
 
 
   // ── Refs for timer callbacks (avoid stale closures) ───────────────────────
+  const saveTimerRef        = useRef(null);
   const fileInputRef        = useRef(null);
   const triggeredKeywords   = useRef(new Set());
+  const photoSuggestCount   = useRef(0); // max 2 photo suggestions per session
   const proactiveNoResponse = useRef(0); // consecutive proactives without user response
   const proactiveTimer      = useRef(null);
   const lastInteraction     = useRef('none'); // 'chat' | 'diary' | 'none'
@@ -96,10 +98,14 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
     startProactiveTimer();
   }, [entry?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Auto-save ─────────────────────────────────────────────────────────────
+  // ── Auto-save (debounced 500ms) ───────────────────────────────────────────
   useEffect(() => {
     if (!entry || !text) return;
-    saveEntry({ ...entry, text, mood, photos, stickers });
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveEntry({ ...entry, text, mood, photos, stickers });
+    }, 500);
+    return () => clearTimeout(saveTimerRef.current);
   }, [text, mood, photos, stickers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Proactive timer ───────────────────────────────────────────────────────
@@ -232,11 +238,14 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
         return;
       }
     }
-    // Photo triggers — per unique keyword, so new items re-trigger
-    const newKw = PHOTO_TRIGGERS.find(t => lower.includes(t) && !triggeredKeywords.current.has(t));
-    if (newKw) {
-      triggeredKeywords.current.add(newKw);
-      setMediaSuggestion('photo');
+    // Photo triggers — per unique keyword, cap at 2 per session
+    if (photoSuggestCount.current < 2) {
+      const newKw = PHOTO_TRIGGERS.find(t => lower.includes(t) && !triggeredKeywords.current.has(t));
+      if (newKw) {
+        triggeredKeywords.current.add(newKw);
+        photoSuggestCount.current += 1;
+        setMediaSuggestion('photo');
+      }
     }
   }, []);
 
@@ -244,31 +253,60 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
   const PET_PHOTO_HINTS = ['拍照', '留下影像', '拍下来', '拍张', '留下来', '必须记录', '留念', '影像', '拍一张', '留下这'];
   const checkPetPhotoHint = useCallback((replyText) => {
     if (triggeredKeywords.current.has('__pet_photo__')) return;
+    if (photoSuggestCount.current >= 2) return;
     const lower = replyText.toLowerCase();
     if (PET_PHOTO_HINTS.some(h => lower.includes(h))) {
       triggeredKeywords.current.add('__pet_photo__');
+      photoSuggestCount.current += 1;
       setMediaSuggestion('photo');
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const compressImage = (file) => new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const MAX_DIM = 1200;
+      let { width, height } = img;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        const scale = Math.min(MAX_DIM / width, MAX_DIM / height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      // Reduce quality until under ~200KB (base64 ≈ 1.37× binary)
+      const MAX_B64 = 200 * 1024 * 1.37;
+      let quality = 0.85;
+      let dataUrl;
+      do {
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
+        quality -= 0.1;
+      } while (dataUrl.length > MAX_B64 && quality > 0.1);
+      resolve(dataUrl);
+    };
+    img.src = objectUrl;
+  });
+
   const handlePhotoAdd = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const existing = photos.length;
+    const existing = photos.length;
+    compressImage(file).then(src => {
       setPhotos(prev => [...prev, {
-        id: Date.now(), src: e.target.result,
+        id: Date.now(), src,
         x: 20 + existing * 12, y: 60 + existing * 10,
         rotation: (existing % 2 === 0 ? 1 : -1) * (1 + existing % 3),
       }]);
       setMediaSuggestion(null);
-    };
-    reader.readAsDataURL(file);
+    });
   };
 
   const handleAIPhoto = async () => {
     setAiGenerating(true);
     try {
-      const url = await generateDiaryIllustration(text, pet);
+      const url = await generateDiaryIllustration(text, pet, historyRef.current);
       // Fetch and convert to base64 so it persists after OSS URL expires
       let src = url;
       try {
@@ -313,7 +351,7 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
   };
 
   const handleSave = () => {
-    saveEntry({ ...entry, text, mood, photos });
+    saveEntry({ ...entry, text, mood, photos, stickers });
     setPetState('goodbye');
     if (text.trim().length > 20) {
       setTimeout(() => setShowShare(true), 600);

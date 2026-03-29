@@ -66,7 +66,8 @@ export default function GrowthScreen({ onBack }) {
   // Load from localStorage cache on mount and whenever periodKey changes
   useEffect(() => {
     const stored = getGrowthCache(periodKey);
-    if (stored && stored.entryCount === entries.length && stored.summary) {
+    const latestId = entries[0]?.id || '';
+    if (stored && stored.entryCount === entries.length && stored.latestId === latestId && stored.summary) {
       setCache(prev => ({ ...prev, [periodKey]: stored }));
     } else if (entries.length > 0) {
       generate();
@@ -79,7 +80,7 @@ export default function GrowthScreen({ onBack }) {
     const summary = await generateGrowthSummary(entries, tab);
     setLoading(false);
 
-    const partial = { summary, imageUrl: null, entryCount: entries.length };
+    const partial = { summary, imageUrl: null, entryCount: entries.length, latestId: entries[0]?.id || '' };
     setCache(prev => ({ ...prev, [periodKey]: partial }));
     setGrowthCache(periodKey, partial);
 
