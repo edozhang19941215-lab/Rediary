@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 
-export default function SpeechBubble({ text, isLoading = false, petColor = '#E8808A' }) {
+export default function SpeechBubble({ text, isLoading = false, petColor = '#E8808A', onDone }) {
   const [displayed, setDisplayed] = useState('');
   const [done, setDone] = useState(false);
+  const onDoneRef = useRef(onDone);
+  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
 
   useEffect(() => {
     if (!text || isLoading) {
@@ -19,6 +21,7 @@ export default function SpeechBubble({ text, isLoading = false, petColor = '#E88
       if (i >= text.length) {
         clearInterval(timer);
         setDone(true);
+        onDoneRef.current?.();
       }
     }, 35);
     return () => clearInterval(timer);
