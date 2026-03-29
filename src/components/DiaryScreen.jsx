@@ -193,10 +193,14 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
     setPetState('talking');
     setConversationHistory(finalHistory);
 
+    // Check user message AND pet reply for photo/voice triggers
+    analyzeForMedia(msg);
+    checkPetPhotoHint(reply);
+
     // Background diary update
     updateDiaryFromChat({ conversationHistory: finalHistory, currentDiary: textRef.current })
       .then(newContent => appendToDiary(newContent));
-  }, [chatInput, petLoading, pet, setPetState, startProactiveTimer]);
+  }, [chatInput, petLoading, pet, setPetState, startProactiveTimer, analyzeForMedia, checkPetPhotoHint]);
 
   // ── Diary textarea ─────────────────────────────────────────────────────────
   const handleTextChange = (e) => {
@@ -235,6 +239,17 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
       setMediaSuggestion('photo');
     }
   }, []);
+
+  // Detect if pet reply explicitly suggests taking a photo
+  const PET_PHOTO_HINTS = ['拍照', '留下影像', '拍下来', '拍张', '留下来', '必须记录', '留念', '影像', '拍一张', '留下这'];
+  const checkPetPhotoHint = useCallback((replyText) => {
+    if (triggeredKeywords.current.has('__pet_photo__')) return;
+    const lower = replyText.toLowerCase();
+    if (PET_PHOTO_HINTS.some(h => lower.includes(h))) {
+      triggeredKeywords.current.add('__pet_photo__');
+      setMediaSuggestion('photo');
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePhotoAdd = (file) => {
     const reader = new FileReader();
