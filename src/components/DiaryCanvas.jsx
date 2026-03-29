@@ -263,7 +263,7 @@ export default function DiaryCanvas({
             background: 'transparent',
             padding: `8px ${textPaddingRight} 8px ${textPaddingLeft}`,
             transition: 'padding 0.3s ease',
-            fontFamily: "'翩翩体', 'ZCOOL QingKe HuangYou', var(--font-body)", fontSize: 16,
+            fontFamily: "'Ma Shan Zheng', var(--font-hand)", fontSize: 16,
             lineHeight: '32px',
             color: stationery.textColor || 'var(--ink)',
             minHeight: 160,

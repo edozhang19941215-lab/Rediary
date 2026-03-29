@@ -1,5 +1,17 @@
 const ENTRIES_KEY = 'peiPei_entries';
 const VISIT_KEY = 'peiPei_todayVisit';
+const SEEDED_KEY = 'peiPei_seeded';
+
+// Seed mock diaries on first launch (no existing data)
+export function seedIfEmpty() {
+  if (localStorage.getItem(SEEDED_KEY)) return;
+  const existing = JSON.parse(localStorage.getItem(ENTRIES_KEY) || '[]');
+  if (existing.length > 0) { localStorage.setItem(SEEDED_KEY, '1'); return; }
+  import('../utils/mockDiaries.js').then(({ MOCK_ENTRIES }) => {
+    localStorage.setItem(ENTRIES_KEY, JSON.stringify(MOCK_ENTRIES));
+    localStorage.setItem(SEEDED_KEY, '1');
+  });
+}
 
 export function getEntries() {
   try { return JSON.parse(localStorage.getItem(ENTRIES_KEY) || '[]'); }

@@ -376,7 +376,7 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
         </div>
 
         {/* Pet + bubble */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
           <div style={{ flexShrink: 0 }}>
             <PetAvatar petId={pet.id} state={petState} size={110} />
           </div>

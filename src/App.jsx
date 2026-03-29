@@ -4,7 +4,7 @@ import DiaryScreen from './components/DiaryScreen';
 import GrowthScreen from './components/GrowthScreen';
 import PetVisit from './components/PetVisit';
 import { PETS, getTodaysPet } from './data/pets';
-import { getEntries, getTodayVisitStatus, setVisitDismissed } from './utils/storage';
+import { getEntries, getTodayVisitStatus, setVisitDismissed, seedIfEmpty } from './utils/storage';
 
 const PET_IDS = Object.keys(PETS);
 
@@ -29,15 +29,15 @@ export default function App() {
   });
 
   useEffect(() => {
-    // Start fade-out at 1.8s, switch screen at 2.3s
-    const fadeTimer = setTimeout(() => setSplashOut(true), 1800);
+    seedIfEmpty(); // populate mock data on first launch
+    const fadeTimer = setTimeout(() => setSplashOut(true), 300);
     const switchTimer = setTimeout(() => {
       setScreen('home');
       const visitStatus = getTodayVisitStatus();
       if (!visitStatus.dismissed) {
         setTimeout(() => setShowVisit(true), 800);
       }
-    }, 2300);
+    }, 1300);
     return () => { clearTimeout(fadeTimer); clearTimeout(switchTimer); };
   }, []);
 
@@ -92,7 +92,7 @@ export default function App() {
       <div style={{
         height: '100%', position: 'relative', overflow: 'hidden',
         opacity: splashOut ? 0 : 1,
-        transition: 'opacity 0.5s ease',
+        transition: 'opacity 1s ease',
       }}>
         <img
           src="/splash.png"
