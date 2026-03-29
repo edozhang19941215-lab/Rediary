@@ -32,7 +32,9 @@ async function callAI(system, userMessage, maxTokens = 500) {
   });
   if (!res.ok) throw new Error(`API ${res.status}`);
   const data = await res.json();
-  return stripThink(data.choices[0].message.content);
+  const text = stripThink(data.choices[0].message.content);
+  if (!text) throw new Error('empty response');
+  return text;
 }
 
 async function callAIWithHistory(system, messages, maxTokens = 400) {
@@ -49,7 +51,9 @@ async function callAIWithHistory(system, messages, maxTokens = 400) {
   });
   if (!res.ok) throw new Error(`API ${res.status}`);
   const data = await res.json();
-  return stripThink(data.choices[0].message.content);
+  const text = stripThink(data.choices[0].message.content);
+  if (!text) throw new Error('empty response');
+  return text;
 }
 
 // Trim leading assistant messages so history always starts with 'user'
