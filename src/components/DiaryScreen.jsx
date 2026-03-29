@@ -62,35 +62,6 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
   useEffect(() => { textRef.current = text; }, [text]);
   useEffect(() => { historyRef.current = conversationHistory; }, [conversationHistory]);
 
-  // ── Speech-queue: never interrupt an animating bubble ────────────────────
-  // bubbleSpeaking: true while typewriter is running; false once onDone fires
-  const [bubbleSpeaking, setBubbleSpeaking] = useState(false);
-  const bubbleSpeakingRef = useRef(false);
-  const pendingAction     = useRef(null); // latest queued fn to run after bubble finishes
-
-  const markBubbleSpeaking = useCallback(() => {
-    bubbleSpeakingRef.current = true;
-    setBubbleSpeaking(true);
-  }, []);
-
-  const handleBubbleDone = useCallback(() => {
-    bubbleSpeakingRef.current = false;
-    setBubbleSpeaking(false);
-    if (pendingAction.current) {
-      const fn = pendingAction.current;
-      pendingAction.current = null;
-      fn();
-    }
-  }, []);
-
-  // Run fn immediately if bubble is idle; otherwise queue it (latest queued wins)
-  const runOrQueue = useCallback((fn) => {
-    if (bubbleSpeakingRef.current) {
-      pendingAction.current = fn;
-    } else {
-      fn();
-    }
-  }, []);
 
   // ── Load entry ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -116,7 +87,6 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
   useEffect(() => {
     if (!entry) return;
     const opening = getScript(pet.id, TOPICS[0], 'opening');
-    markBubbleSpeaking();
     setPetMessage(opening);
     const initHistory = [
       { role: 'user', content: '（打开日记本）' },
@@ -160,54 +130,45 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
 
       if (!msg) { startProactiveTimer(); return; }
 
-      const deliver = () => {
-        setPetState('talking');
-        markBubbleSpeaking();
-        setPetMessage(msg);
-        setConversationHistory(prev => [...prev, { role: 'assistant', content: msg }]);
-        startProactiveTimer();
-      };
-      runOrQueue(deliver);
+      setPetState('talking');
+      setPetMessage(msg);
+      setConversationHistory(prev => [...prev, { role: 'assistant', content: msg }]);
+      startProactiveTimer();
     }, PROACTIVE_DELAY);
-  }, [pet, setPetState, markBubbleSpeaking, runOrQueue]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pet, setPetState]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => clearTimeout(proactiveTimer.current), []);
 
   // ── Mood selection ─────────────────────────────────────────────────────────
-  const handleMoodSelect = useCallback((selected) => {
+  const handleMoodSelect = useCallback(async (selected) => {
     const next = mood === selected ? null : selected;
     setMood(next);
     if (!next) return;
 
+    if (POSITIVE_MOODS.includes(next)) setPetState('happy', { thenTalking: 2000 });
     lastInteraction.current = 'chat';
     startProactiveTimer();
 
-    const doFetch = async () => {
-      if (POSITIVE_MOODS.includes(next)) setPetState('happy', { thenTalking: 2000 });
-      setPetLoading(true);
-      const msg = await getMoodResponse({
-        pet,
-        mood: next,
-        moodLabel: MOODS.find(m => m.emoji === next)?.label || '',
-      });
-      markBubbleSpeaking();
-      setPetMessage(msg);
-      setPetLoading(false);
-      if (!POSITIVE_MOODS.includes(next)) setPetState('talking');
-      setConversationHistory(prev => [
-        ...prev,
-        { role: 'user', content: `用户选择了心情：${next}` },
-        { role: 'assistant', content: msg },
-      ]);
-    };
-
-    runOrQueue(doFetch);
-  }, [mood, pet, setPetState, startProactiveTimer, markBubbleSpeaking, runOrQueue]);
+    setPetLoading(true);
+    const msg = await getMoodResponse({
+      pet,
+      mood: next,
+      moodLabel: MOODS.find(m => m.emoji === next)?.label || '',
+    });
+    setPetMessage(msg);
+    setPetLoading(false);
+    if (!POSITIVE_MOODS.includes(next)) setPetState('talking');
+    setConversationHistory(prev => [
+      ...prev,
+      { role: 'user', content: `用户选择了心情：${next}` },
+      { role: 'assistant', content: msg },
+    ]);
+  }, [mood, pet, setPetState, startProactiveTimer]);
 
   // ── Chat send ──────────────────────────────────────────────────────────────
   const handleChatSend = useCallback(async () => {
     const msg = chatInput.trim();
-    if (!msg || petLoading || bubbleSpeakingRef.current) return; // wait for bubble to finish
+    if (!msg || petLoading) return;
     setChatInput('');
     chatInputRef.current = '';
     lastInteraction.current = 'chat';
@@ -227,7 +188,6 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
       diaryText: textRef.current,
     });
     const finalHistory = [...updatedHistory, { role: 'assistant', content: reply }];
-    markBubbleSpeaking();
     setPetMessage(reply);
     setPetLoading(false);
     setPetState('talking');
@@ -236,7 +196,7 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
     // Background diary update
     updateDiaryFromChat({ conversationHistory: finalHistory, currentDiary: textRef.current })
       .then(newContent => appendToDiary(newContent));
-  }, [chatInput, petLoading, pet, setPetState, startProactiveTimer, markBubbleSpeaking]);
+  }, [chatInput, petLoading, pet, setPetState, startProactiveTimer]);
 
   // ── Diary textarea ─────────────────────────────────────────────────────────
   const handleTextChange = (e) => {
@@ -422,7 +382,7 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
             <PetAvatar petId={pet.id} state={petState} size={110} />
           </div>
           <div style={{ flex: 1 }}>
-            <SpeechBubble text={petMessage} isLoading={petLoading} petColor={pet.color} onDone={handleBubbleDone} />
+            <SpeechBubble text={petMessage} isLoading={petLoading} petColor={pet.color} />
           </div>
         </div>
 
@@ -441,12 +401,12 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
           />
           <button
             onClick={handleChatSend}
-            disabled={!chatInput.trim() || petLoading || bubbleSpeaking}
+            disabled={!chatInput.trim() || petLoading}
             style={{
               width: 36, height: 36, borderRadius: '50%', border: 'none',
-              background: chatInput.trim() && !petLoading && !bubbleSpeaking ? pet.color : 'var(--surface-high)',
-              color: chatInput.trim() && !petLoading && !bubbleSpeaking ? 'white' : 'var(--ink-faint)',
-              cursor: chatInput.trim() && !petLoading && !bubbleSpeaking ? 'pointer' : 'default',
+              background: chatInput.trim() && !petLoading ? pet.color : 'var(--surface-high)',
+              color: chatInput.trim() && !petLoading ? 'white' : 'var(--ink-faint)',
+              cursor: chatInput.trim() && !petLoading ? 'pointer' : 'default',
               fontSize: 16, transition: 'all 0.15s', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
