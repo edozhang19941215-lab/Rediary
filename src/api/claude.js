@@ -12,6 +12,7 @@ const IMAGE_API_URL = API_KEY
 
 // Strip <think>...</think> reasoning blocks from response
 function stripThink(text) {
+  if (!text) return '';
   return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 }
 
@@ -32,7 +33,7 @@ async function callAI(system, userMessage, maxTokens = 500) {
   });
   if (!res.ok) throw new Error(`API ${res.status}`);
   const data = await res.json();
-  const text = stripThink(data.choices[0].message.content);
+  const text = stripThink(data.choices?.[0]?.message?.content);
   if (!text) throw new Error('empty response');
   return text;
 }
@@ -51,7 +52,7 @@ async function callAIWithHistory(system, messages, maxTokens = 400) {
   });
   if (!res.ok) throw new Error(`API ${res.status}`);
   const data = await res.json();
-  const text = stripThink(data.choices[0].message.content);
+  const text = stripThink(data.choices?.[0]?.message?.content);
   if (!text) throw new Error('empty response');
   return text;
 }
