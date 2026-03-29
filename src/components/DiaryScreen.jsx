@@ -200,7 +200,7 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
     // Background diary update
     updateDiaryFromChat({ conversationHistory: finalHistory, currentDiary: textRef.current })
       .then(newContent => appendToDiary(newContent));
-  }, [chatInput, petLoading, pet, setPetState, startProactiveTimer, analyzeForMedia, checkPetPhotoHint]);
+  }, [chatInput, petLoading, pet, setPetState, startProactiveTimer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Diary textarea ─────────────────────────────────────────────────────────
   const handleTextChange = (e) => {
