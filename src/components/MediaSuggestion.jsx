@@ -1,9 +1,17 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
-export default function MediaSuggestion({ type, petName, petColor, onPhoto, onVoice, onDismiss }) {
+export default function MediaSuggestion({ type, petName, petColor, onPhoto, onAIPhoto, onVoice, onDismiss }) {
   const fileRef = useRef();
+  const [aiLoading, setAiLoading] = useState(false);
 
   const isPhoto = type === 'photo';
+
+  const handleAI = async () => {
+    setAiLoading(true);
+    await onAIPhoto();
+    setAiLoading(false);
+    onDismiss();
+  };
 
   return (
     <div style={{
@@ -46,7 +54,7 @@ export default function MediaSuggestion({ type, petName, petColor, onPhoto, onVo
         >×</button>
       </div>
 
-      <div style={{ display: 'flex', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {isPhoto && (
           <>
             <input
@@ -55,9 +63,26 @@ export default function MediaSuggestion({ type, petName, petColor, onPhoto, onVo
               accept="image/*"
               style={{ display: 'none' }}
               onChange={e => {
-                if (e.target.files[0]) onPhoto(e.target.files[0]);
+                if (e.target.files[0]) { onPhoto(e.target.files[0]); onDismiss(); }
               }}
             />
+            <button
+              onClick={handleAI}
+              disabled={aiLoading}
+              style={{
+                flex: 1,
+                padding: '10px 0',
+                borderRadius: 12,
+                border: `1.5px solid ${petColor}`,
+                background: petColor,
+                color: 'white',
+                fontFamily: 'var(--font-body)',
+                fontSize: 13,
+                cursor: aiLoading ? 'default' : 'pointer',
+                fontWeight: 500,
+                opacity: aiLoading ? 0.7 : 1,
+              }}
+            >{aiLoading ? '生成中…' : '✨ AI生图'}</button>
             <button
               onClick={() => fileRef.current.click()}
               style={{

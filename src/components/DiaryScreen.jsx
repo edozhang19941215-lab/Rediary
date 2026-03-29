@@ -477,7 +477,7 @@ export default function DiaryScreen({ entryId, petId, stationeryId = 'lined', on
       {mediaSuggestion && (
         <MediaSuggestion
           type={mediaSuggestion} petName={pet.name} petColor={pet.color}
-          onPhoto={handlePhotoAdd} onVoice={handleVoice}
+          onPhoto={handlePhotoAdd} onAIPhoto={handleAIPhoto} onVoice={handleVoice}
           onDismiss={() => setMediaSuggestion(null)}
         />
       )}

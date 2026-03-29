@@ -90,11 +90,15 @@ export async function getMoodResponse({ pet, mood, moodLabel }) {
 
 // Pet replies to user's chat message in diary
 export async function getChatReply({ pet, userMessage, conversationHistory, diaryText }) {
-  // Inject current diary content into system prompt so pet knows what user wrote
   const diaryContext = diaryText?.trim()
     ? `\n\n【用户今天日记里写了】\n${diaryText.slice(0, 600)}`
     : '';
-  const system = pet.systemPrompt + diaryContext;
+  // Inject last pet message so model won't repeat itself
+  const lastPetMsg = [...conversationHistory].reverse().find(m => m.role === 'assistant')?.content || '';
+  const noRepeat = lastPetMsg
+    ? `\n\n【严格禁止】不能重复、改写或与这句话雷同："${lastPetMsg.slice(0, 60)}"，必须说全新的内容。`
+    : '';
+  const system = pet.systemPrompt + diaryContext + noRepeat;
 
   const history = trimHistory(conversationHistory.slice(-8));
   history.push({ role: 'user', content: userMessage });
@@ -160,13 +164,18 @@ export async function getProactiveMessage({ pet, diaryText, conversationHistory 
     ? `用户目前写了：\n"${diaryText.slice(-400)}"`
     : '用户还没有开始写日记。';
 
+  const lastPetMsg = [...conversationHistory].reverse().find(m => m.role === 'assistant')?.content || '';
+  const noRepeat = lastPetMsg
+    ? `\n【严格禁止】不能重复或改写这句："${lastPetMsg.slice(0, 60)}"，必须换一个全新的角度或话题。`
+    : '';
+
   const prompt = `${context}
 
 用户已经一段时间没有互动了。请以你的角色主动发起一句话：
 - 可以是对日记内容的真诚回应（比如鼓励、好奇追问某个细节）
-- 可以是对用户积极情绪的放大（比如用户写了工作顺利，你可以说"那你今天一定很努力，说说是什么让你这么厉害？"）
+- 可以是对用户积极情绪的放大
 - 也可以用你的个性特点随口说一句话来吸引用户回应
-保持温暖、自然，1-2句，不要重复之前说过的话。`;
+保持温暖、自然，1-2句。${noRepeat}`;
 
   try {
     const history = trimHistory(conversationHistory.slice(-4));
