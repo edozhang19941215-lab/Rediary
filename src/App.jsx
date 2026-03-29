@@ -14,6 +14,7 @@ export default function App() {
   const [activePetId, setActivePetId] = useState(null);
   const [activeStationery, setActiveStationery] = useState('lined');
   const [showVisit, setShowVisit] = useState(false);
+  const [splashOut, setSplashOut] = useState(false);
 
   // Pet shown in PetVisit overlay (cycles with 换一只)
   const [visitPetIndex, setVisitPetIndex] = useState(() => {
@@ -28,14 +29,16 @@ export default function App() {
   });
 
   useEffect(() => {
-    setTimeout(() => {
+    // Start fade-out at 1.8s, switch screen at 2.3s
+    const fadeTimer = setTimeout(() => setSplashOut(true), 1800);
+    const switchTimer = setTimeout(() => {
       setScreen('home');
-      // Auto-show PetVisit on first daily launch
       const visitStatus = getTodayVisitStatus();
       if (!visitStatus.dismissed) {
         setTimeout(() => setShowVisit(true), 800);
       }
-    }, 300);
+    }, 2300);
+    return () => { clearTimeout(fadeTimer); clearTimeout(switchTimer); };
   }, []);
 
   const visitPet = PETS[PET_IDS[visitPetIndex]];
@@ -87,16 +90,19 @@ export default function App() {
   if (screen === 'loading') {
     return (
       <div style={{
-        height: '100%', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', background: 'var(--cream)',
-        flexDirection: 'column', gap: 16,
+        height: '100%', position: 'relative', overflow: 'hidden',
+        opacity: splashOut ? 0 : 1,
+        transition: 'opacity 0.5s ease',
       }}>
-        <img src="/icon.png" alt="REDiary" style={{ width: 64, height: 64, borderRadius: 16, animation: 'bounce-in 0.6s ease both' }} />
-        <div style={{
-          fontFamily: 'var(--font-hand)', fontSize: 28,
-          color: 'var(--ink)', letterSpacing: 4,
-          animation: 'fade-in 0.6s ease 0.3s both',
-        }}>REDiary</div>
+        <img
+          src="/splash.png"
+          alt=""
+          style={{
+            position: 'absolute', inset: 0,
+            width: '100%', height: '100%',
+            objectFit: 'cover',
+          }}
+        />
       </div>
     );
   }
