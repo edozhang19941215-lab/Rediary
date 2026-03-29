@@ -86,7 +86,17 @@ export default function GrowthScreen({ onBack }) {
     if (summary) {
       setImgLoading(true);
       try {
-        const imageUrl = await generateGrowthIllustration(summary);
+        const url = await generateGrowthIllustration(summary);
+        // Convert to base64 so cached URL doesn't expire (MiniMax OSS ~30min TTL)
+        let imageUrl = url;
+        try {
+          const blob = await fetch(url).then(r => r.blob());
+          imageUrl = await new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.readAsDataURL(blob);
+          });
+        } catch { /* use raw URL if fetch fails */ }
         const full = { ...partial, imageUrl };
         setCache(prev => ({ ...prev, [periodKey]: full }));
         setGrowthCache(periodKey, full);
