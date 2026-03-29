@@ -16,7 +16,7 @@ function stripThink(text) {
   return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 }
 
-async function callAI(system, userMessage, maxTokens = 500) {
+async function callAI(system, userMessage, maxTokens = 500, temperature = 0.7) {
   const headers = { 'Content-Type': 'application/json' };
   if (API_KEY) headers['Authorization'] = `Bearer ${API_KEY}`;
   const res = await fetch(API_URL, {
@@ -25,6 +25,7 @@ async function callAI(system, userMessage, maxTokens = 500) {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: maxTokens,
+      temperature,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: userMessage },
@@ -129,6 +130,7 @@ export async function updateDiaryFromChat({ conversationHistory, currentDiary })
 【核心原则】
 只记录【用户】自己说的关于自己生活的内容。
 绝对不能记录：宠物/小动物说的话、宠物分享的故事、宠物的经历感受。
+绝对不能推测或补充用户没有亲口提到的具体事件、地点、人物、感受。
 
 【记录标准——满足任一条即记录】
 1. 用户提到了自己经历的具体的事、物、人、地点
@@ -144,7 +146,7 @@ export async function updateDiaryFromChat({ conversationHistory, currentDiary })
 - 认真阅读"现有日记"，理解已有的内容、时态和语气风格
 - 输出是日记的自然续写，用第一人称，像同一个人继续写
 - 不要重复现有日记已经描述过的事件或感受
-- 如果现有日记里已出现"今天"，不要以"今天"开头，改用自然连接词或直接叙事
+- 如果现有日记里已出现"今天"，不要以"今天"开头
 - 语言风格与现有日记保持一致，顺畅接续
 - 1-2句，简洁自然
 
@@ -155,7 +157,8 @@ export async function updateDiaryFromChat({ conversationHistory, currentDiary })
     const result = await callAI(
       system,
       `现有日记：\n${currentDiary || '（空白）'}\n\n最新对话：\n${exchangeText}`,
-      300
+      200,
+      0.3  // lower temperature reduces hallucination while keeping natural writing
     );
     return result.trim();
   } catch {
